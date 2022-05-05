@@ -72,8 +72,8 @@ jobs:
           arch: x64
       - name: Build dependencies
         run: ceedling project:windows_64 clobber dependencies:make
-      - name: Run build release
-        run: ceedling project:windows_64 release
+      - name: Run build and test
+        run: ceedling project:windows_64
   windows-32bit:
     runs-on: windows-2019
     steps:
@@ -86,5 +86,5 @@ jobs:
           arch: x86
       - name: Build dependencies
         run: ceedling project:windows_32 clobber dependencies:make
-      - name: Run build release
-        run: ceedling project:windows_32 release
+      - name: Run build and test
+        run: ceedling project:windows_32
