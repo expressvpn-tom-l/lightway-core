@@ -2,7 +2,7 @@
 name: CI
 on:
   push:
-    branches: [ main ]
+    branches: [ main, debug-ci ]
   pull_request:
     branches: [ main ]
 jobs:
@@ -66,6 +66,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install Ceedling
         run: gem install ceedling --no-user-install
+      - name: Check Ceedling version
+        run: ceedling version
       - name: Set up Visual Studio shell
         uses: egor-tensin/vs-shell@v2
         with:
@@ -80,6 +82,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install Ceedling
         run: gem install ceedling --no-user-install
+      - name: Check Ceedling version
+        run: ceedling version
       - name: Set up Visual Studio shell
         uses: egor-tensin/vs-shell@v2
         with:
