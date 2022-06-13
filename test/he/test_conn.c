@@ -871,7 +871,7 @@ void test_he_conn_set_protocol_version_null_conn(void) {
 void test_he_conn_is_error_fatal_streaming(void) {
   bool res = false;
   conn.connection_type = HE_CONNECTION_TYPE_STREAM;
-  for(int i = 0; i >= HE_ERR_INCORRECT_PROTOCOL_VERSION; i--) {
+  for(int i = 0; i >= HE_ERR_INVALID_AUTH_TYPE; i--) {
     switch(i) {
       case HE_SUCCESS:
       case HE_ERR_SSL_ERROR_NONFATAL:
@@ -890,7 +890,7 @@ void test_he_conn_is_error_fatal_streaming(void) {
 void test_he_conn_is_error_fatal_code_for_datagram(void) {
   bool res = false;
   conn.connection_type = HE_CONNECTION_TYPE_DATAGRAM;
-  for(int i = 0; i >= HE_ERR_INCORRECT_PROTOCOL_VERSION; i--) {
+  for(int i = 0; i >= HE_ERR_INVALID_AUTH_TYPE; i--) {
     switch(i) {
       case HE_SUCCESS:
       case HE_ERR_INVALID_CONN_STATE:
@@ -901,7 +901,6 @@ void test_he_conn_is_error_fatal_code_for_datagram(void) {
       case HE_ERR_EMPTY_PACKET:
       case HE_ERR_PACKET_TOO_SMALL:
       case HE_ERR_NOT_HE_PACKET:
-      case HE_ERR_UNSUPPORTED_PACKET_TYPE:
       case HE_ERR_BAD_PACKET:
       case HE_ERR_UNKNOWN_SESSION:
       case HE_ERR_INCORRECT_PROTOCOL_VERSION:

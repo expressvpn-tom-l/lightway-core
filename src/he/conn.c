@@ -332,7 +332,7 @@ he_return_code_t he_conn_disconnect(he_conn_t *conn) {
 
   // Return error if in the wrong state
   if(conn->state == HE_STATE_DISCONNECTING || conn->state == HE_STATE_NONE ||
-      conn->state == HE_STATE_CONNECTING || conn->state == HE_STATE_DISCONNECTED) {
+     conn->state == HE_STATE_CONNECTING || conn->state == HE_STATE_DISCONNECTED) {
     return HE_ERR_INVALID_CONN_STATE;
   }
 
