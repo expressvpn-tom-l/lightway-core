@@ -26,9 +26,16 @@
     - test/support
 
 :defines:
-  :release:
+  :common: &common_defines
     - _FORTIFY_SOURCE=2
+    - DEBUG_WOLFSSL
+  :release:
+    - *common_defines
   :test:
+    - *common_defines
+    - TEST
+  :test_preprocess:
+    - *common_defines
     - TEST
 
 :cmock:

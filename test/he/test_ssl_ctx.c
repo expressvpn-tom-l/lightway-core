@@ -75,6 +75,7 @@ void tearDown(void) {
 
 void test_he_init(void) {
   wolfSSL_Init_ExpectAndReturn(SSL_SUCCESS);
+
   he_return_code_t res = he_init();
   TEST_ASSERT_EQUAL(HE_SUCCESS, res);
 }
