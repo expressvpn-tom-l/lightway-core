@@ -49,7 +49,7 @@
       :source_path: third_party/wolfssl
       :fetch:
         :method: :git
-        :source: https://github.com/wolfSSL/wolfssl.git
+        :source: https://github.com/julek-wolfssl/wolfssl
         :hash: 53b2be06d396fbeb6669d5919a0968e602338fa1
       :build:
         - "cp ../../windows/wolfssl-user_settings-32.h wolfssl/user_settings.h"
