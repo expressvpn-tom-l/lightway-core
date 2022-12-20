@@ -50,7 +50,7 @@
       :fetch:
         :method: :git
         :source: https://github.com/wolfSSL/wolfssl.git
-        :hash: v5.5.4-stable
+        :hash: 53b2be06d396fbeb6669d5919a0968e602338fa1
       :build:
         - "cp ../../windows/wolfssl-user_settings-64.h wolfssl/user_settings.h"
         - "cp -f ../../windows/wolfssl-user_settings-64.h IDE/WIN/user_settings.h"
