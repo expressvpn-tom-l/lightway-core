@@ -41,7 +41,7 @@ build() {
         --enable-tls13 \
         --disable-oldtls \
         --prefix="${PREFIX}" \
-        --enable-singlethreaded \
+        --disable-singlethreaded \
         --enable-dtls \
         --enable-dtls-mtu \
         --enable-sp=yes,4096 \
