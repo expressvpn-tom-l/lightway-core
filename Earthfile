@@ -36,7 +36,7 @@ test-copy:
 test:
     FROM +test-copy
     # Run the tests
-    RUN ceedling test project:linux
+    RUN ceedling test verbosity[4] project:linux
 
 coverage:
     FROM +test-copy

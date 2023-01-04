@@ -15,17 +15,19 @@
       - SonarQube
 
 :environment:
-  - :he_wolfssl_source: https://github.com/wolfSSL/wolfssl
-  - :he_wolfssl_commit: v5.5.4-stable
+  - :he_wolfssl_source: https://github.com/julek-wolfssl/wolfssl
+  - :he_wolfssl_commit: zd15346
 
 :tools_test_file_preprocessor:
   :arguments:
     - -include third_party/builds/wolfssl_build/include/wolfssl/options.h
     - -include third_party/builds/wolfssl_build/include/wolfssl/wolfcrypt/settings.h
+    - -include third_party/builds/wolfssl_build/include/wolfssl/wolfcrypt/logging.h
 :tools_test_includes_preprocessor:
   :arguments:
     - -include third_party/builds/wolfssl_build/include/wolfssl/options.h
     - -include third_party/builds/wolfssl_build/include/wolfssl/wolfcrypt/settings.h
+    - -include third_party/builds/wolfssl_build/include/wolfssl/wolfcrypt/logging.h
 :tools_release_linker:
   :arguments:
     - -lm

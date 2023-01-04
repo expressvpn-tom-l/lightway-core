@@ -38,6 +38,11 @@ he_return_code_t he_init() {
     return HE_ERR_INIT_FAILED;
   }
 
+#ifdef DEBUG_WOLFSSL
+  // Enable wolfssl debugging
+  wolfSSL_Debugging_ON();
+#endif
+
   return HE_SUCCESS;
 }
 
