@@ -176,7 +176,7 @@ struct he_conn {
   uint16_t auth_buffer_length;
 
   /// MTU Helium should use for the outside connection (i.e. Internet)
-  int outside_mtu;
+  uint16_t outside_mtu;
 
   void *data;
 

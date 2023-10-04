@@ -216,7 +216,6 @@ static he_return_code_t he_conn_internal_connect(he_conn_t *conn, he_ssl_ctx_t *
     wolfSSL_dtls_set_using_nonblock(conn->wolf_ssl, 1);
 
     // Set the MTU
-    // TODO Can we change conn->mtu to be uint16_t?
     // No need to tell wolf to include space for its own headers
     res = wolfSSL_dtls_set_mtu(
         conn->wolf_ssl, (uint16_t)conn->outside_mtu - HE_PACKET_OVERHEAD + HE_WOLF_MAX_HEADER_SIZE);
@@ -1014,7 +1013,7 @@ bool he_conn_is_auth_buffer_set(const he_conn_t *conn) {
   return conn->auth_buffer_length != 0;
 }
 
-int he_conn_set_outside_mtu(he_conn_t *conn, int mtu) {
+he_return_code_t he_conn_set_outside_mtu(he_conn_t *conn, uint16_t mtu) {
   // Return if conn is null
   if(!conn) {
     return HE_ERR_NULL_POINTER;
@@ -1026,7 +1025,7 @@ int he_conn_set_outside_mtu(he_conn_t *conn, int mtu) {
   return HE_SUCCESS;
 }
 
-int he_conn_get_outside_mtu(he_conn_t *conn) {
+uint16_t he_conn_get_outside_mtu(he_conn_t *conn) {
   // Return if conn is null
   if(!conn) {
     return 0;
@@ -1041,11 +1040,7 @@ bool he_conn_is_outside_mtu_set(he_conn_t *conn) {
     return false;
   }
 
-  if(conn->outside_mtu) {
-    return true;
-  }
-
-  return false;
+  return (conn->outside_mtu > 0);
 }
 
 size_t he_internal_calculate_data_packet_length(he_conn_t *conn, size_t length) {
