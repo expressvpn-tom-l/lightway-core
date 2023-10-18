@@ -108,8 +108,8 @@ he_return_code_t he_internal_pmtud_handle_probe_ack(he_conn_t *conn, uint16_t pr
         uint16_t probe_size = conn->pmtud_probing_size;
         probe_size +=
             (conn->pmtud_is_using_big_step) ? PMTUD_PROBE_BIG_STEP : PMTUD_PROBE_SMALL_STEP;
-        conn->pmtud_probing_size = MIN(probe_size, MAX_PLPMTU);
-        he_internal_pmtud_send_probe(conn, conn->pmtud_probing_size);
+        probe_size = MIN(probe_size, MAX_PLPMTU);
+        he_internal_pmtud_send_probe(conn, probe_size);
       }
       break;
     case HE_PMTUD_STATE_ERROR:
@@ -144,9 +144,10 @@ he_return_code_t he_internal_pmtud_handle_probe_timeout(he_conn_t *conn) {
       if(conn->pmtud_is_using_big_step) {
         // Try probing with small step
         conn->pmtud_is_using_big_step = false;
-        conn->pmtud_probing_size -= PMTUD_PROBE_BIG_STEP;
-        conn->pmtud_probing_size += PMTUD_PROBE_SMALL_STEP;
-        return he_internal_pmtud_send_probe(conn, conn->pmtud_probing_size);
+        uint16_t probe_size = conn->pmtud_probing_size;
+        probe_size -= PMTUD_PROBE_BIG_STEP;
+        probe_size += PMTUD_PROBE_SMALL_STEP;
+        return he_internal_pmtud_send_probe(conn, probe_size);
       } else {
         // Search completed
         // Set the probing size to the previous successful one
@@ -217,9 +218,9 @@ he_return_code_t he_internal_pmtud_base_confirmed(he_conn_t *conn) {
   // Start searching
   conn->pmtud_probe_count = 0;
   conn->pmtud_is_using_big_step = true;
-  conn->pmtud_probing_size = conn->pmtud_base + PMTUD_PROBE_BIG_STEP;
+  uint16_t probe_size = conn->pmtud_base + PMTUD_PROBE_BIG_STEP;
 
-  return he_internal_pmtud_send_probe(conn, conn->pmtud_probing_size);
+  return he_internal_pmtud_send_probe(conn, probe_size);
 }
 
 he_return_code_t he_internal_pmtud_confirm_base_failed(he_conn_t *conn) {
