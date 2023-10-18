@@ -30,11 +30,11 @@
 #include "mock_conn.h"
 
 // Helper macros
-#define EXPECT_HE_INTERNAL_SEND_MESSAGE()                                 \
-  do {                                                                    \
-    he_internal_send_message_ExpectAndReturn(&conn, NULL, 0, HE_SUCCESS); \
-    he_internal_send_message_IgnoreArg_message();                         \
-    he_internal_send_message_IgnoreArg_length();                          \
+#define EXPECT_HE_INTERNAL_SEND_MESSAGE(rc)                         \
+  do {                                                              \
+    he_internal_send_message_ExpectAndReturn(&conn, NULL, 0, (rc)); \
+    he_internal_send_message_IgnoreArg_message();                   \
+    he_internal_send_message_IgnoreArg_length();                    \
   } while(0)
 
 static he_conn_t conn = {0};
@@ -51,6 +51,7 @@ void test_he_internal_pmtud_send_probe(void) {
   conn.state = HE_STATE_ONLINE;
   conn.pmtud_state = HE_PMTUD_STATE_BASE;
   conn.pmtud_time_cb = pmtud_time_cb;
+  conn.ping_next_id = 42;
 
   uint16_t probe_mtu = 1212;
 
@@ -63,6 +64,29 @@ void test_he_internal_pmtud_send_probe(void) {
   he_return_code_t res = he_internal_pmtud_send_probe(&conn, probe_mtu);
   TEST_ASSERT_EQUAL(HE_SUCCESS, res);
   TEST_ASSERT_EQUAL(1, call_counter);
+  TEST_ASSERT_EQUAL(probe_mtu, conn.pmtud_probing_size);
+  TEST_ASSERT_EQUAL(42, conn.pmtud_probe_pending_id);
+}
+
+void test_he_internal_pmtud_send_probe_failed(void) {
+  conn.state = HE_STATE_ONLINE;
+  conn.pmtud_state = HE_PMTUD_STATE_BASE;
+  conn.pmtud_time_cb = pmtud_time_cb;
+  conn.ping_next_id = 42;
+
+  uint16_t probe_mtu = 1212;
+
+  // The expected ping message length should be equal to the length of the of data message of the
+  // given payload size
+  uint16_t expected_length = probe_mtu + sizeof(he_msg_data_t);
+  he_internal_send_message_ExpectAndReturn(&conn, NULL, expected_length, HE_ERR_SSL_ERROR);
+  he_internal_send_message_IgnoreArg_message();
+
+  he_return_code_t res = he_internal_pmtud_send_probe(&conn, probe_mtu);
+  TEST_ASSERT_EQUAL(HE_SUCCESS, res);
+  TEST_ASSERT_EQUAL(1, call_counter);
+  TEST_ASSERT_EQUAL(probe_mtu, conn.pmtud_probing_size);
+  TEST_ASSERT_EQUAL(0, conn.pmtud_probe_pending_id);
 }
 
 void test_he_internal_pmtud_send_probe_nulls(void) {
@@ -98,7 +122,7 @@ void test_he_internal_pmtud_handle_probe_ack_from_base(void) {
   conn.pmtud_time_cb = pmtud_time_cb;
   conn.pmtud_base = HE_MAX_MTU;
 
-  EXPECT_HE_INTERNAL_SEND_MESSAGE();
+  EXPECT_HE_INTERNAL_SEND_MESSAGE(HE_SUCCESS);
 
   TEST_ASSERT_EQUAL(HE_SUCCESS, he_internal_pmtud_handle_probe_ack(&conn, 123));
 
@@ -122,7 +146,7 @@ void test_he_internal_pmtud_handle_probe_ack_from_error(void) {
   conn.pmtud_time_cb = pmtud_time_cb;
   conn.pmtud_base = HE_MAX_MTU;
 
-  EXPECT_HE_INTERNAL_SEND_MESSAGE();
+  EXPECT_HE_INTERNAL_SEND_MESSAGE(HE_SUCCESS);
 
   TEST_ASSERT_EQUAL(HE_SUCCESS, he_internal_pmtud_handle_probe_ack(&conn, 123));
 
@@ -149,7 +173,7 @@ static void test_handle_probe_ack_from_searching(uint16_t probe_size, bool use_b
   conn.pmtud_is_using_big_step = use_big_step;
 
   if(probe_size < MAX_PLPMTU) {
-    EXPECT_HE_INTERNAL_SEND_MESSAGE();
+    EXPECT_HE_INTERNAL_SEND_MESSAGE(HE_SUCCESS);
   }
 
   TEST_ASSERT_EQUAL(HE_SUCCESS, he_internal_pmtud_handle_probe_ack(&conn, 123));
@@ -196,7 +220,7 @@ void test_he_internal_pmtud_handle_probe_timeout_try_again(void) {
   conn.pmtud_probing_size = 1212;
 
   // It should send probe again when probe count hasn't reached MAX_PROBES
-  EXPECT_HE_INTERNAL_SEND_MESSAGE();
+  EXPECT_HE_INTERNAL_SEND_MESSAGE(HE_SUCCESS);
 
   TEST_ASSERT_EQUAL(HE_SUCCESS, he_internal_pmtud_handle_probe_timeout(&conn));
 
@@ -249,7 +273,7 @@ void test_he_internal_pmtud_handle_probe_timeout_blackhole_detected(void) {
   conn.pmtud_is_using_big_step = false;
   conn.pmtud_time_cb = pmtud_time_cb;
 
-  EXPECT_HE_INTERNAL_SEND_MESSAGE();
+  EXPECT_HE_INTERNAL_SEND_MESSAGE(HE_SUCCESS);
 
   // Probe count reached MAX_PROBES,
   TEST_ASSERT_EQUAL(HE_SUCCESS, he_internal_pmtud_handle_probe_timeout(&conn));

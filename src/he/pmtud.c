@@ -61,9 +61,10 @@ he_return_code_t he_internal_pmtud_send_probe(he_conn_t *conn, uint16_t probe_mt
     // If he_internal_send_message failed to send the probe message, trigger the pmtud timeout with
     // a tiny delay
     timeout_ms = 10;
+  } else {
+    // Set the probe pending id for verifying the ack message
+    conn->pmtud_probe_pending_id = id;
   }
-
-  conn->pmtud_probe_pending_id = id;
 
   // Start the probe timer
   if(conn->pmtud_time_cb) {
