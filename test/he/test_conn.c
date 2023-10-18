@@ -1641,8 +1641,14 @@ void test_he_conn_start_pmtu_discovery_null(void) {
 }
 
 void test_he_conn_start_pmtu_discovery_invalid_state(void) {
-  conn.state = HE_STATE_LINK_UP;
-  TEST_ASSERT_EQUAL(HE_ERR_INVALID_CONN_STATE, he_conn_start_pmtu_discovery(&conn));
+  he_conn_state_t invalid_states[] = {
+      HE_STATE_NONE,       HE_STATE_LINK_UP,      HE_STATE_CONFIGURING,   HE_STATE_AUTHENTICATING,
+      HE_STATE_CONNECTING, HE_STATE_DISCONNECTED, HE_STATE_DISCONNECTING,
+  };
+  for(size_t i = 0; i < sizeof(invalid_states) / sizeof(he_conn_state_t); i++) {
+    conn.state = invalid_states[i];
+    TEST_ASSERT_EQUAL(HE_ERR_INVALID_CONN_STATE, he_conn_start_pmtu_discovery(&conn));
+  }
 }
 
 void test_he_conn_start_pmtu_discovery_callback_not_set(void) {
