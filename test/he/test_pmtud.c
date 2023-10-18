@@ -204,7 +204,7 @@ void test_he_internal_pmtud_handle_probe_timeout_try_again(void) {
   TEST_ASSERT_EQUAL(44, conn.ping_next_id);
 }
 
-void test_he_internal_pmtud_handle_probe_timeout_confirm_based_failed(void) {
+void test_he_internal_pmtud_handle_probe_timeout_confirm_base_failed(void) {
   conn.state = HE_STATE_ONLINE;
   conn.pmtud_state = HE_PMTUD_STATE_BASE;
   conn.pmtud_probe_count = 3;
@@ -228,7 +228,6 @@ void test_he_internal_pmtud_handle_probe_timeout_search_completed(void) {
   conn.pmtud_is_using_big_step = false;
 
   // Probe count reached MAX_PROBES,
-  // it should call he_internal_pmtud_confirm_base_failed if current state is Base.
   TEST_ASSERT_EQUAL(HE_SUCCESS, he_internal_pmtud_handle_probe_timeout(&conn));
 
   // The new state should be Search Complete
@@ -252,7 +251,6 @@ void test_he_internal_pmtud_handle_probe_timeout_blackhole_detected(void) {
   EXPECT_HE_INTERNAL_SEND_MESSAGE();
 
   // Probe count reached MAX_PROBES,
-  // it should call he_internal_pmtud_confirm_base_failed if current state is Base.
   TEST_ASSERT_EQUAL(HE_SUCCESS, he_internal_pmtud_handle_probe_timeout(&conn));
 
   // The new state should be Base
