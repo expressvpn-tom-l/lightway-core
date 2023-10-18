@@ -238,8 +238,9 @@ void test_he_internal_pmtud_handle_probe_timeout_confirm_base_failed(void) {
   // The new state should be Error
   TEST_ASSERT_EQUAL(HE_PMTUD_STATE_ERROR, conn.pmtud_state);
 
-  // The probe count should be reset to 0
+  // The probe count and pending id should be reset to 0
   TEST_ASSERT_EQUAL(0, conn.pmtud_probe_count);
+  TEST_ASSERT_EQUAL(0, conn.pmtud_probe_pending_id);
 }
 
 void test_he_internal_pmtud_handle_probe_timeout_search_completed(void) {
@@ -258,8 +259,9 @@ void test_he_internal_pmtud_handle_probe_timeout_search_completed(void) {
   // The effective mtu should be set
   TEST_ASSERT_EQUAL(1212 - PMTUD_PROBE_SMALL_STEP, conn.effective_pmtu);
 
-  // The probe count should be reset to 0
+  // The probe count and pending id should be reset to 0
   TEST_ASSERT_EQUAL(0, conn.pmtud_probe_count);
+  TEST_ASSERT_EQUAL(0, conn.pmtud_probe_pending_id);
 }
 
 void test_he_internal_pmtud_handle_probe_timeout_blackhole_detected(void) {

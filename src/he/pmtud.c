@@ -134,6 +134,7 @@ he_return_code_t he_internal_pmtud_handle_probe_timeout(he_conn_t *conn) {
   }
 
   // Reset probe count
+  conn->pmtud_probe_pending_id = 0;
   conn->pmtud_probe_count = 0;
 
   // PROBE_COUNT reaches MAX_PROBES, decide what to do based on state
