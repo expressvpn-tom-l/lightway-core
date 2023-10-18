@@ -1622,7 +1622,7 @@ void test_he_conn_get_curve_name(void) {
   TEST_ASSERT_EQUAL_STRING(curve_name, he_conn_get_curve_name(&conn));
 }
 
-void test_he_conn_start_pmtu_discovery(void) {
+void test_he_conn_start_pmtu_discovery_succeeds_when_not_started(void) {
   conn.state = HE_STATE_ONLINE;
   conn.pmtud_state_change_cb = pmtud_state_change_cb;
   conn.pmtud_time_cb = pmtud_time_cb;
@@ -1630,6 +1630,12 @@ void test_he_conn_start_pmtu_discovery(void) {
   he_internal_pmtud_start_base_probing_ExpectAndReturn(&conn, HE_SUCCESS);
 
   TEST_ASSERT_EQUAL(HE_SUCCESS, he_conn_start_pmtu_discovery(&conn));
+}
+
+void test_he_conn_start_pmtu_discovery_do_nothing_when_already_started(void) {
+  conn.state = HE_STATE_ONLINE;
+  conn.pmtud_state_change_cb = pmtud_state_change_cb;
+  conn.pmtud_time_cb = pmtud_time_cb;
 
   // Do nothing if the pmtud is already started
   conn.pmtud_state = HE_PMTUD_STATE_BASE;
@@ -1640,7 +1646,7 @@ void test_he_conn_start_pmtu_discovery_null(void) {
   TEST_ASSERT_EQUAL(HE_ERR_NULL_POINTER, he_conn_start_pmtu_discovery(NULL));
 }
 
-void test_he_conn_start_pmtu_discovery_invalid_state(void) {
+void test_he_conn_start_pmtu_discovery_fails_on_invalid_conn_states(void) {
   he_conn_state_t invalid_states[] = {
       HE_STATE_NONE,       HE_STATE_LINK_UP,      HE_STATE_CONFIGURING,   HE_STATE_AUTHENTICATING,
       HE_STATE_CONNECTING, HE_STATE_DISCONNECTED, HE_STATE_DISCONNECTING,
