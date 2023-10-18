@@ -87,7 +87,9 @@ he_return_code_t pop_network_config_cb(he_conn_t *conn, he_network_config_ipv4_t
 }
 
 he_return_code_t pmtud_time_cb(he_conn_t *conn, int timeout, void *context) {
-  call_counter++;
+  if(timeout > 0) {
+    call_counter++;
+  }
   return HE_SUCCESS;
 }
 

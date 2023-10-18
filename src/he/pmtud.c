@@ -82,6 +82,11 @@ he_return_code_t he_internal_pmtud_handle_probe_ack(he_conn_t *conn, uint16_t pr
     return HE_SUCCESS;
   }
 
+  // Stop the timer
+  if(conn->pmtud_time_cb) {
+    conn->pmtud_time_cb(conn, 0, conn->data);
+  }
+
   // Reset the pending probe id
   conn->pmtud_probe_pending_id = 0;
 
