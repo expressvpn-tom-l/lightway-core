@@ -192,7 +192,7 @@ he_return_code_t he_internal_pmtud_start_base_probing(he_conn_t *conn) {
   he_internal_pmtud_change_state(conn, HE_PMTUD_STATE_BASE);
 
   // Initialize PMTUD internal state
-  conn->pmtud_base = MAX(MIN_PLPMTU, conn->effective_pmtu);
+  conn->pmtud_base = MIN_PLPMTU;
   conn->pmtud_probe_count = 0;
 
   // Start probing base mtu
