@@ -49,7 +49,7 @@ he_return_code_t he_internal_pmtud_send_probe(he_conn_t *conn, uint16_t probe_mt
 
   // Set payload for the probe message
   uint16_t payload_size = probe_mtu + sizeof(he_msg_data_t) - sizeof(he_msg_ping_t);
-  probe->length = payload_size;
+  probe->length = htons(payload_size);
 
   conn->pmtud_probe_count++;
   conn->pmtud_probing_size = probe_mtu;

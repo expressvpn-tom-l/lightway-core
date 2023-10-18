@@ -59,6 +59,7 @@ void test_he_internal_pmtud_send_probe(void) {
   uint16_t expected_length = probe_mtu + sizeof(he_msg_data_t);
   he_internal_send_message_ExpectAndReturn(&conn, NULL, expected_length, HE_SUCCESS);
   he_internal_send_message_IgnoreArg_message();
+
   he_return_code_t res = he_internal_pmtud_send_probe(&conn, probe_mtu);
   TEST_ASSERT_EQUAL(HE_SUCCESS, res);
   TEST_ASSERT_EQUAL(1, call_counter);
