@@ -30,7 +30,7 @@ he_return_code_t he_internal_pmtud_send_probe(he_conn_t *conn, uint16_t probe_mt
     return HE_ERR_NULL_POINTER;
   }
 
-  if(conn->state != HE_STATE_ONLINE || conn->pmtud_state == HE_PMTUD_STATE_DISABLED) {
+  if(conn->state != HE_STATE_ONLINE) {
     return HE_ERR_INVALID_CONN_STATE;
   }
 

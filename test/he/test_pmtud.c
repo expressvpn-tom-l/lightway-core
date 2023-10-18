@@ -93,10 +93,7 @@ void test_he_internal_pmtud_send_probe_nulls(void) {
   TEST_ASSERT_EQUAL(HE_ERR_NULL_POINTER, he_internal_pmtud_send_probe(NULL, 1350));
 }
 
-void test_he_internal_pmtud_send_probe_invalid_state(void) {
-  TEST_ASSERT_EQUAL(HE_ERR_INVALID_CONN_STATE, he_internal_pmtud_send_probe(&conn, 1350));
-
-  conn.state = HE_STATE_ONLINE;
+void test_he_internal_pmtud_send_probe_invalid_conn_state(void) {
   TEST_ASSERT_EQUAL(HE_ERR_INVALID_CONN_STATE, he_internal_pmtud_send_probe(&conn, 1350));
 }
 
