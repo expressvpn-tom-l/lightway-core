@@ -169,6 +169,9 @@ he_return_code_t he_internal_pmtud_start_base_probing(he_conn_t *conn) {
     case HE_PMTUD_STATE_SEARCH_COMPLETE:
       // Valid states
       break;
+    case HE_PMTUD_STATE_BASE:
+      // Already in base state, do nothing
+      return HE_SUCCESS;
     default:
       // Invalid states
       return HE_ERR_INVALID_CONN_STATE;
