@@ -97,11 +97,16 @@ void test_he_internal_pmtud_send_probe_invalid_conn_state(void) {
   TEST_ASSERT_EQUAL(HE_ERR_INVALID_CONN_STATE, he_internal_pmtud_send_probe(&conn, 1350));
 }
 
-void test_he_internal_pmtud_send_probe_invalid_probe_mtu(void) {
+void test_he_internal_pmtud_send_probe_when_probe_mtu_too_small(void) {
   conn.state = HE_STATE_ONLINE;
   conn.pmtud_state = HE_PMTUD_STATE_BASE;
   TEST_ASSERT_EQUAL(1416, MAX_PLPMTU);
   TEST_ASSERT_EQUAL(HE_ERR_INVALID_MTU_SIZE, he_internal_pmtud_send_probe(&conn, 120));
+}
+
+void test_he_internal_pmtud_send_probe_when_probe_mtu_too_large(void) {
+  conn.state = HE_STATE_ONLINE;
+  conn.pmtud_state = HE_PMTUD_STATE_BASE;
   TEST_ASSERT_EQUAL(HE_ERR_INVALID_MTU_SIZE, he_internal_pmtud_send_probe(&conn, HE_MAX_WIRE_MTU));
 }
 
@@ -197,11 +202,11 @@ static void test_handle_probe_ack_from_searching(uint16_t probe_size, bool use_b
 }
 
 void test_he_internal_pmtud_handle_probe_ack_from_searching_big_step(void) {
-  test_handle_probe_ack_from_searching(1212, true);
+  test_handle_probe_ack_from_searching(MAX_PLPMTU - 120, true);
 }
 
 void test_he_internal_pmtud_handle_probe_ack_from_searching_small_step(void) {
-  test_handle_probe_ack_from_searching(1212, false);
+  test_handle_probe_ack_from_searching(MAX_PLPMTU - 120, false);
 }
 
 void test_he_internal_pmtud_handle_probe_ack_from_searching_to_search_complete(void) {
@@ -214,7 +219,7 @@ void test_he_internal_pmtud_handle_probe_timeout_try_again(void) {
   conn.pmtud_probe_count = 1;
   conn.pmtud_time_cb = pmtud_time_cb;
   conn.ping_next_id = 43;
-  conn.pmtud_probing_size = 1212;
+  conn.pmtud_probing_size = MAX_PLPMTU - 120;
 
   // It should send probe again when probe count hasn't reached MAX_PROBES
   EXPECT_HE_INTERNAL_SEND_MESSAGE(HE_SUCCESS);
@@ -247,7 +252,7 @@ void test_he_internal_pmtud_handle_probe_timeout_search_completed(void) {
   conn.state = HE_STATE_ONLINE;
   conn.pmtud_state = HE_PMTUD_STATE_SEARCHING;
   conn.pmtud_probe_count = 3;
-  conn.pmtud_probing_size = 1212;
+  conn.pmtud_probing_size = MAX_PLPMTU - 120;
   conn.pmtud_is_using_big_step = false;
 
   // Probe count reached MAX_PROBES,
@@ -257,7 +262,7 @@ void test_he_internal_pmtud_handle_probe_timeout_search_completed(void) {
   TEST_ASSERT_EQUAL(HE_PMTUD_STATE_SEARCH_COMPLETE, conn.pmtud_state);
 
   // The effective mtu should be set
-  TEST_ASSERT_EQUAL(1212 - PMTUD_PROBE_SMALL_STEP, conn.effective_pmtu);
+  TEST_ASSERT_EQUAL(MAX_PLPMTU - 120 - PMTUD_PROBE_SMALL_STEP, conn.effective_pmtu);
 
   // The probe count and pending id should be reset to 0
   TEST_ASSERT_EQUAL(0, conn.pmtud_probe_count);
@@ -268,7 +273,7 @@ void test_he_internal_pmtud_handle_probe_timeout_blackhole_detected(void) {
   conn.state = HE_STATE_ONLINE;
   conn.pmtud_state = HE_PMTUD_STATE_SEARCH_COMPLETE;
   conn.pmtud_probe_count = 3;
-  conn.pmtud_probing_size = 1212;
+  conn.pmtud_probing_size = MAX_PLPMTU - 120;
   conn.pmtud_is_using_big_step = false;
   conn.pmtud_time_cb = pmtud_time_cb;
 
