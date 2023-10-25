@@ -1,4 +1,4 @@
-/* *
+/**
  * Lightway Core
  * Copyright (C) 2021 Express VPN International Ltd.
  *
@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <time.h>
+
 #include "msg_handlers.h"
 
 #include "conn.h"
@@ -24,6 +26,7 @@
 #include "core.h"
 #include "network.h"
 #include "plugin_chain.h"
+#include "memory.h"
 
 he_return_code_t he_handle_msg_noop(he_conn_t *conn, uint8_t *packet, int length) {
   if(conn == NULL || packet == NULL) {
@@ -431,6 +434,152 @@ he_return_code_t he_handle_msg_data(he_conn_t *conn, uint8_t *packet, int length
   uint8_t *inside_packet = packet + sizeof(he_msg_data_t);
 
   return internal_handle_data(conn, inside_packet, pkt_length);
+}
+
+he_return_code_t he_handle_msg_data_with_frag(he_conn_t *conn, uint8_t *packet, int length) {
+  if(conn == NULL || packet == NULL) {
+    return HE_ERR_NULL_POINTER;
+  }
+
+  // Check we're in the ONLINE state
+  if(conn->state != HE_STATE_ONLINE) {
+    return HE_ERR_INVALID_CONN_STATE;
+  }
+
+  // Quick header check
+  if(length < sizeof(he_msg_data_frag_t)) {
+    return HE_ERR_PACKET_TOO_SMALL;
+  }
+
+  // Apply header
+  he_msg_data_frag_t *pkt = (he_msg_data_frag_t *)packet;
+
+  // Check the packet length
+  uint16_t pkt_length = ntohs(pkt->length);
+  if(pkt_length > length - sizeof(he_msg_data_frag_t)) {
+    return HE_ERR_POINTER_WOULD_OVERFLOW;
+  }
+  uint16_t off = ntohs(pkt->offset);
+  uint16_t offset = (off & HE_FRAG_OFF_MASK) * 8;
+  uint8_t mf = (off & HE_FRAG_MF_MASK) >> 13;
+  if(offset + pkt_length > HE_MAX_WIRE_MTU) {
+    return HE_ERR_POINTER_WOULD_OVERFLOW;
+  }
+
+  // Get the fragment identifier
+  uint16_t frag_id = ntohs(pkt->id);
+
+  // Look up in fragment table
+  he_fragment_entry_t *entry = conn->frag_table.entries[frag_id];
+  if(entry == NULL) {
+    // Fragment entry not found, create a new one
+    entry = he_calloc(1, sizeof(he_fragment_entry_t));
+    if(entry == NULL) {
+      return HE_ERR_NO_MEMORY;
+    }
+    entry->fragment_id = frag_id;
+    entry->timestamp = time(NULL);
+    conn->frag_table.entries[frag_id] = entry;
+  }
+
+  // Check if the entry has expired
+  time_t now = time(NULL);
+  if(now - entry->timestamp > HE_FRAG_TTL) {
+    // Entry has expired, free up the entry
+    while(entry->fragments != NULL) {
+      he_fragment_entry_node_t *next = entry->fragments->next;
+      he_free(entry->fragments);
+      entry->fragments = next;
+    }
+    entry->timestamp = now;
+  }
+
+  // Now we have an entry to work with
+  // Copy the packet data to the buffer first
+  memcpy(entry->data + offset, packet + sizeof(he_msg_data_frag_t), pkt_length);
+
+  if(entry->fragments == NULL) {
+    // We haven't received any fragment yet
+    he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
+    node->begin = offset;
+    node->end = offset + pkt_length;
+    node->last_frag = (mf == 0);
+    entry->fragments = node;
+    return HE_SUCCESS;
+  }
+
+  // Check if we can reassemble the full packet
+  he_fragment_entry_node_t *prev = NULL;
+  he_fragment_entry_node_t *curr = entry->fragments;
+  while(curr) {
+    if(offset == curr->end) {
+      // Expand current node and continue check all remaining nodes
+      curr->end = offset + pkt_length;
+      curr->last_frag = (mf == 0);
+      curr = curr->next;
+      continue;
+    }
+    if(offset + pkt_length == curr->begin) {
+      // Prepend to current node
+      curr->begin = offset;
+      break;
+    }
+    if(offset > curr->end) {
+      // There's a gap, try next node or insert a new node here
+      if(curr->next) {
+        // Try combine the two existing nodes first
+        if(curr->next->begin == curr->end) {
+          he_fragment_entry_node_t *next = curr->next;
+          curr->end = next->begin;
+          curr->next = next->next;
+          curr->last_frag = next->last_frag;
+          he_free(next);
+        }
+        prev = curr;
+        curr = curr->next;
+        continue;
+      } else {
+        he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
+        node->begin = offset;
+        node->end = offset + pkt_length;
+        node->last_frag = (mf == 0);
+        curr->next = node;
+        break;
+      }
+    }
+    if(offset + pkt_length < curr->begin) {
+      // There's a gap, insert a new node between previous and current nodes
+      he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
+      node->begin = offset;
+      node->end = offset + pkt_length;
+      node->last_frag = (mf == 0);
+      node->next = curr;
+      if(prev == NULL) {
+        entry->fragments = node;
+      } else {
+        prev->next = node;
+      }
+      break;
+    }
+    // The new fragment overlaps with existing fragments. Drop the packet and return error.
+    return HE_ERR_BAD_PACKET;
+  }
+
+  he_return_code_t ret = HE_SUCCESS;
+  if(entry->fragments->last_frag && entry->fragments->begin == 0) {
+    // We now have a fully assembled packet, handle it and remove the entry
+    ret = internal_handle_data(conn, entry->data, entry->fragments->end);
+
+    // Cleanup the entry
+    while(entry->fragments) {
+      he_fragment_entry_node_t *next = entry->fragments->next;
+      he_free(entry->fragments);
+      entry->fragments = next;
+    }
+    he_free(entry);
+    conn->frag_table.entries[frag_id] = NULL;
+  }
+  return ret;
 }
 
 he_return_code_t he_handle_msg_deprecated_13(he_conn_t *conn, uint8_t *packet, int length) {

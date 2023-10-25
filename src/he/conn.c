@@ -143,6 +143,20 @@ he_conn_t *he_conn_create(void) {
 
 void he_conn_destroy(he_conn_t *conn) {
   if(conn) {
+    // Free up all cached fragments
+    for(size_t i = 0; i < sizeof(conn->frag_table.entries) / sizeof(he_fragment_entry_t); i++) {
+      he_fragment_entry_t *entry = conn->frag_table.entries[i];
+      if(entry) {
+        he_fragment_entry_node_t *node = entry->fragments;
+        while(node) {
+          he_fragment_entry_node_t *next = node->next;
+          he_free(node);
+          node = next;
+        };
+        he_free(entry);
+        conn->frag_table.entries[i] = NULL;
+      }
+    }
     wolfSSL_free(conn->wolf_ssl);
     he_free(conn);
   }
