@@ -24,6 +24,7 @@
 #include "conn.h"
 #include "conn_internal.h"
 #include "core.h"
+#include "frag.h"
 #include "network.h"
 #include "plugin_chain.h"
 #include "memory.h"
@@ -367,6 +368,12 @@ he_return_code_t he_handle_msg_auth(he_conn_t *conn, uint8_t *packet, int length
 
 static he_return_code_t internal_handle_data(he_conn_t *conn, uint8_t *inside_packet,
                                              uint16_t pkt_length) {
+  // Validate packet
+  if(!he_internal_is_ipv4_packet_valid(inside_packet, pkt_length)) {
+    // Invalid packet
+    return HE_ERR_BAD_PACKET;
+  }
+
   // Note that the parallel call to ingress is in conn.c:he_internal_outside_data_received
   size_t post_plugin_length = pkt_length;
   he_return_code_t res =
@@ -382,12 +389,6 @@ static he_return_code_t internal_handle_data(he_conn_t *conn, uint8_t *inside_pa
   // Sanity-check length -- contract says that it can't be longer than pkt_length but just in case
   if(post_plugin_length > pkt_length) {
     return HE_ERR_FAILED;
-  }
-
-  // Validate packet
-  if(!he_internal_is_ipv4_packet_valid(inside_packet, post_plugin_length)) {
-    // Invalid packet
-    return HE_ERR_BAD_PACKET;
   }
 
   // Packet seems to be fine, hand it over
@@ -477,7 +478,6 @@ he_return_code_t he_handle_msg_data_with_frag(he_conn_t *conn, uint8_t *packet, 
     if(entry == NULL) {
       return HE_ERR_NO_MEMORY;
     }
-    entry->fragment_id = frag_id;
     entry->timestamp = time(NULL);
     conn->frag_table.entries[frag_id] = entry;
   }
@@ -485,101 +485,32 @@ he_return_code_t he_handle_msg_data_with_frag(he_conn_t *conn, uint8_t *packet, 
   // Check if the entry has expired
   time_t now = time(NULL);
   if(now - entry->timestamp > HE_FRAG_TTL) {
-    // Entry has expired, free up the entry
-    while(entry->fragments != NULL) {
-      he_fragment_entry_node_t *next = entry->fragments->next;
-      he_free(entry->fragments);
-      entry->fragments = next;
-    }
+    // Entry has expired, reset and reuse the entry
+    he_fragment_entry_reset(entry);
     entry->timestamp = now;
   }
 
-  // Now we have an entry to work with
-  // Copy the packet data to the buffer first
-  memcpy(entry->data + offset, packet + sizeof(he_msg_data_frag_t), pkt_length);
-
-  if(entry->fragments == NULL) {
-    // We haven't received any fragment yet
-    he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
-    node->begin = offset;
-    node->end = offset + pkt_length;
-    node->last_frag = (mf == 0);
-    entry->fragments = node;
-    return HE_SUCCESS;
+  // Now we have an entry to work with,
+  // update the entry with new fragment
+  bool assembled = false;
+  he_return_code_t ret = he_fragment_entry_update(entry, packet + sizeof(he_msg_data_frag_t),
+                                                  offset, pkt_length, mf, &assembled);
+  if(ret != HE_SUCCESS) {
+    return ret;
   }
 
-  // Check if we can reassemble the full packet
-  he_fragment_entry_node_t *prev = NULL;
-  he_fragment_entry_node_t *curr = entry->fragments;
-  while(curr) {
-    if(offset == curr->end) {
-      // Expand current node and continue check all remaining nodes
-      curr->end = offset + pkt_length;
-      curr->last_frag = (mf == 0);
-      curr = curr->next;
-      continue;
-    }
-    if(offset + pkt_length == curr->begin) {
-      // Prepend to current node
-      curr->begin = offset;
-      break;
-    }
-    if(offset > curr->end) {
-      // There's a gap, try next node or insert a new node here
-      if(curr->next) {
-        // Try combine the two existing nodes first
-        if(curr->next->begin == curr->end) {
-          he_fragment_entry_node_t *next = curr->next;
-          curr->end = next->begin;
-          curr->next = next->next;
-          curr->last_frag = next->last_frag;
-          he_free(next);
-        }
-        prev = curr;
-        curr = curr->next;
-        continue;
-      } else {
-        he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
-        node->begin = offset;
-        node->end = offset + pkt_length;
-        node->last_frag = (mf == 0);
-        curr->next = node;
-        break;
-      }
-    }
-    if(offset + pkt_length < curr->begin) {
-      // There's a gap, insert a new node between previous and current nodes
-      he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
-      node->begin = offset;
-      node->end = offset + pkt_length;
-      node->last_frag = (mf == 0);
-      node->next = curr;
-      if(prev == NULL) {
-        entry->fragments = node;
-      } else {
-        prev->next = node;
-      }
-      break;
-    }
-    // The new fragment overlaps with existing fragments. Drop the packet and return error.
-    return HE_ERR_BAD_PACKET;
-  }
-
-  he_return_code_t ret = HE_SUCCESS;
-  if(entry->fragments->last_frag && entry->fragments->begin == 0) {
+  if(assembled) {
     // We now have a fully assembled packet, handle it and remove the entry
-    ret = internal_handle_data(conn, entry->data, entry->fragments->end);
+    he_return_code_t rc = internal_handle_data(conn, entry->data, entry->fragments->end);
 
     // Cleanup the entry
-    while(entry->fragments) {
-      he_fragment_entry_node_t *next = entry->fragments->next;
-      he_free(entry->fragments);
-      entry->fragments = next;
-    }
+    he_fragment_entry_reset(entry);
     he_free(entry);
     conn->frag_table.entries[frag_id] = NULL;
+
+    return rc;
   }
-  return ret;
+  return HE_SUCCESS;
 }
 
 he_return_code_t he_handle_msg_deprecated_13(he_conn_t *conn, uint8_t *packet, int length) {

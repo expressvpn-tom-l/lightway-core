@@ -25,6 +25,9 @@
 // Unit under test
 #include "frag.h"
 
+// Direct includes for utility functions
+#include "memory.h"
+
 // Internal Mocks
 #include "mock_conn_internal.h"
 

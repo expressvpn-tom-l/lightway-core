@@ -30,6 +30,8 @@
 #include "config.h"
 #include "core.h"
 #include "frag.h"
+#include "memory.h"
+
 #include <wolfssl/error-ssl.h>
 
 // Internal Mocks

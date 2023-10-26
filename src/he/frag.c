@@ -17,10 +17,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <assert.h>
+
 #include "he.h"
 #include "he_internal.h"
 #include "frag.h"
 #include "conn_internal.h"
+#include "memory.h"
 
 he_return_code_t he_internal_frag_and_send_message(he_conn_t *conn, uint8_t *packet,
                                                    uint16_t length, uint16_t frag_size) {
@@ -76,6 +79,108 @@ he_return_code_t he_internal_frag_and_send_message(he_conn_t *conn, uint8_t *pac
     length -= frag_len;
     offset += frag_len;
   };
+
+  return HE_SUCCESS;
+}
+
+void he_fragment_entry_reset(he_fragment_entry_t *entry) {
+  assert(entry);
+
+  if(entry) {
+    while(entry->fragments != NULL) {
+      he_fragment_entry_node_t *next = entry->fragments->next;
+      he_free(entry->fragments);
+      entry->fragments = next;
+    }
+    entry->timestamp = 0;
+    memset(entry->data, 0, sizeof(entry->data));
+  }
+}
+
+he_return_code_t he_fragment_entry_update(he_fragment_entry_t *entry, uint8_t *data,
+                                          uint16_t offset, size_t length, uint8_t mf,
+                                          bool *assembled) {
+  // Sanity checks
+  if(entry == NULL || data == NULL || assembled == NULL) {
+    return HE_ERR_NULL_POINTER;
+  }
+  if(offset + length > sizeof(entry->data)) {
+    return HE_ERR_PACKET_TOO_LARGE;
+  }
+
+  // We haven't received any fragment yet
+  if(entry->fragments == NULL) {
+    he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
+    node->begin = offset;
+    node->end = offset + length;
+    node->last_frag = (mf == 0);
+    entry->fragments = node;
+    memcpy(entry->data + offset, data, length);
+    return HE_SUCCESS;
+  }
+
+  // Add new fragment to the list
+  he_fragment_entry_node_t *prev = NULL;
+  he_fragment_entry_node_t *curr = entry->fragments;
+  while(curr) {
+    if(offset == curr->end) {
+      // Expand current node and continue check all remaining nodes
+      curr->end = offset + length;
+      curr->last_frag = (mf == 0);
+      curr = curr->next;
+      continue;
+    }
+    if(offset + length == curr->begin) {
+      // Prepend to current node
+      curr->begin = offset;
+      break;
+    }
+    if(offset > curr->end) {
+      // There's a gap, try next node or insert a new node here
+      if(curr->next) {
+        // Try combine the two existing nodes first
+        if(curr->next->begin == curr->end) {
+          he_fragment_entry_node_t *next = curr->next;
+          curr->end = next->begin;
+          curr->next = next->next;
+          curr->last_frag = next->last_frag;
+          he_free(next);
+        }
+        prev = curr;
+        curr = curr->next;
+        continue;
+      } else {
+        he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
+        node->begin = offset;
+        node->end = offset + length;
+        node->last_frag = (mf == 0);
+        curr->next = node;
+        break;
+      }
+    }
+    if(offset + length < curr->begin) {
+      // There's a gap, insert a new node between previous and current nodes
+      he_fragment_entry_node_t *node = he_calloc(1, sizeof(he_fragment_entry_node_t));
+      node->begin = offset;
+      node->end = offset + length;
+      node->last_frag = (mf == 0);
+      node->next = curr;
+      if(prev == NULL) {
+        entry->fragments = node;
+      } else {
+        prev->next = node;
+      }
+      break;
+    }
+    // The new fragment overlaps with existing fragments. Drop the packet and return error.
+    return HE_ERR_BAD_FRAGMENT;
+  }
+
+  // Copy the packet data to the buffer
+  memcpy(entry->data + offset, data, length);
+
+  // Check if we can reassemble the full packet
+  *assembled = (entry->fragments->last_frag && entry->fragments->begin == 0);
 
   return HE_SUCCESS;
 }

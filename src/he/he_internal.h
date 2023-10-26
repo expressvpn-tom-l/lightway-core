@@ -137,11 +137,10 @@ typedef struct he_fragment_entry_node {
 
 // An entry of the fragment table
 typedef struct he_fragment_entry {
-  time_t timestamp;
-  uint16_t fragment_id;
-  // Link list to all received fragments
-  he_fragment_entry_node_t *fragments;
   uint8_t data[HE_MAX_WIRE_MTU];
+  time_t timestamp;
+  // Linked list contains infomation of received fragments
+  he_fragment_entry_node_t *fragments;
 } he_fragment_entry_t;
 
 // Fragment table for reassembling fragments

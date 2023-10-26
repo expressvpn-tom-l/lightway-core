@@ -28,6 +28,7 @@
 
 // Direct Includes for Utility Functions
 #include "memory.h"
+#include "frag.h"
 
 // Internal Mocks
 #include "mock_conn.h"
@@ -1123,7 +1124,6 @@ void test_msg_data_frag_cache_new_fragment(void) {
   he_fragment_entry_t *entry = conn->frag_table.entries[123];
   TEST_ASSERT_NOT_NULL(entry);
   TEST_ASSERT_GREATER_OR_EQUAL(0, entry->timestamp);
-  TEST_ASSERT_EQUAL(123, entry->fragment_id);
   TEST_ASSERT_NOT_NULL(entry->fragments);
   TEST_ASSERT_EQUAL(512, entry->fragments->begin);
   TEST_ASSERT_EQUAL(1024, entry->fragments->end);
@@ -1156,7 +1156,7 @@ void test_msg_data_frag_reassemble_full_packet(void) {
   TEST_ASSERT_NULL(entry);
 }
 
-void test_msg_data_frag_overlap(void) {
+void test_msg_data_frag_overlap_fragments(void) {
   conn->state = HE_STATE_ONLINE;
 
   // Received the 2nd fragment
@@ -1164,8 +1164,8 @@ void test_msg_data_frag_overlap(void) {
   ret = he_handle_msg_data_with_frag(conn, empty_data, len1);
   TEST_ASSERT_EQUAL(HE_SUCCESS, ret);
 
-  // Received a bad fragment
+  // Received a bad fragment, it should be dropped
   size_t len2 = make_fragment(empty_data, 123, 0, 768, 1);
   ret = he_handle_msg_data_with_frag(conn, empty_data, len2);
-  TEST_ASSERT_EQUAL(HE_ERR_BAD_PACKET, ret);
+  TEST_ASSERT_EQUAL(HE_ERR_BAD_FRAGMENT, ret);
 }
