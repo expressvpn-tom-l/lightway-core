@@ -191,7 +191,7 @@ he_return_code_t he_internal_conn_configure(he_conn_t *conn, he_ssl_ctx_t *ctx) 
   conn->ping_next_id = 1;
 
   // Initialize the fragment table
-  conn->frag_table = he_internal_fragment_table_create();
+  conn->frag_table = he_internal_fragment_table_create(ctx->max_frag_entries);
 
   return HE_SUCCESS;
 }
